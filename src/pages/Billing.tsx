@@ -148,7 +148,7 @@ export default function Billing() {
         });
       }
 
-      const invoiceId = await addInvoice({
+      const invoicePayload: any = {
         customerId: finalCustomerId,
         customerName: customerName,
         items: cart,
@@ -161,8 +161,14 @@ export default function Billing() {
         paymentMethods: ['Cash'], // Default to cash
         status: 'Paid',
         profit,
-        deliveryDate: deliveryDate ? new Date(deliveryDate).getTime() : undefined
-      });
+      };
+
+      if (deliveryDate) {
+        invoicePayload.deliveryDate = new Date(deliveryDate).getTime();
+        invoicePayload.deliveryStatus = 'Pending';
+      }
+
+      const invoiceId = await addInvoice(invoicePayload);
 
       // Update customer stats
       if (finalCustomerId) {
