@@ -14,7 +14,7 @@ interface DataContextType {
   addProduct: (product: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   updateProduct: (id: string, product: Partial<Product>) => Promise<void>;
   deleteProduct: (id: string) => Promise<void>;
-  addInvoice: (invoiceData: Omit<Invoice, 'id' | 'date'>) => Promise<string>;
+  addInvoice: (invoiceData: Omit<Invoice, 'id'> & { date?: number }) => Promise<string>;
   updateInvoice: (id: string, updates: Partial<Invoice>) => Promise<void>;
   addCustomer: (customerData: Omit<Customer, 'id' | 'createdAt' | 'updatedAt' | 'totalPurchases' | 'paidAmount' | 'dueAmount'>) => Promise<string>;
   updateCustomer: (id: string, updates: Partial<Customer>) => Promise<void>;
@@ -158,12 +158,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return `INV-${year}-${String(nextNum).padStart(5, '0')}`;
   };
 
-  const addInvoice = async (invoiceData: Omit<Invoice, 'id' | 'date'>) => {
+  const addInvoice = async (invoiceData: Omit<Invoice, 'id'> & { date?: number }) => {
     const customId = await generateInvoiceId();
     const newInvoice = {
       ...invoiceData,
       id: customId,
-      date: Date.now()
+      date: invoiceData.date || Date.now()
     };
     
     // Decrement stock for each item sold concurrently

@@ -19,6 +19,7 @@ export default function Billing() {
   const [customerName, setCustomerName] = useState('');
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [deliveryDate, setDeliveryDate] = useState('');
+  const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
 
   const filteredProducts = products.filter(p =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -161,6 +162,7 @@ export default function Billing() {
         paymentMethods: ['Cash'], // Default to cash
         status: 'Paid',
         profit,
+        date: new Date(invoiceDate).getTime(),
       };
 
       if (deliveryDate) {
@@ -198,6 +200,7 @@ export default function Billing() {
       setCustomerName('');
       setSelectedCustomerId(null);
       setDeliveryDate('');
+      setInvoiceDate(new Date().toISOString().split('T')[0]);
       setIsCheckoutModalOpen(false);
     } catch (error) {
       console.error("Error saving invoice:", error);
@@ -376,6 +379,15 @@ export default function Billing() {
                 </div>
 
                 <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Invoice Date *</label>
+                    <input 
+                      type="date" 
+                      value={invoiceDate}
+                      onChange={(e) => setInvoiceDate(e.target.value)}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label>
                     <input 
