@@ -9,7 +9,7 @@ export default function Inventory() {
   
   // Quick Edit State
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [tempStock, setTempStock] = useState<number>(0);
+  const [tempStock, setTempStock] = useState<number | string>('');
 
   // Statistics
   const totalItemsInStock = products.reduce((sum, p) => sum + (p.stockQuantity > 0 ? p.stockQuantity : 0), 0);
@@ -30,11 +30,12 @@ export default function Inventory() {
   };
 
   const handleSaveStock = async (productId: string) => {
-    if (tempStock < 0) {
+    const stockToSave = tempStock === '' ? 0 : Number(tempStock);
+    if (stockToSave < 0) {
       alert("Stock cannot be negative.");
       return;
     }
-    await updateProduct(productId, { stockQuantity: tempStock });
+    await updateProduct(productId, { stockQuantity: stockToSave });
     setEditingId(null);
   };
 
@@ -136,7 +137,7 @@ export default function Inventory() {
                       <input
                         type="number"
                         value={tempStock}
-                        onChange={(e) => setTempStock(Number(e.target.value))}
+                        onChange={(e) => setTempStock(e.target.value === '' ? '' : Number(e.target.value))}
                         className="w-24 border-2 border-blue-500 rounded px-2 py-1 text-sm font-bold"
                         autoFocus
                       />
