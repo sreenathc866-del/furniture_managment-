@@ -13,7 +13,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onEdit, onDel
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
       <div className="h-48 bg-gray-100 relative">
         {product.imageUrls && product.imageUrls.length > 0 ? (
-          <img src={product.imageUrls[0]} alt={product.name} className="w-full h-full object-cover" />
+          <img src={product.imageUrls[0]} alt={product.name} className="w-full h-full object-contain" />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-400">
             No Image

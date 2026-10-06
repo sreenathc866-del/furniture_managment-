@@ -218,7 +218,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClos
                 <div className="flex flex-wrap gap-4 mb-4">
                   {imagePreviews.map((preview, index) => (
                     <div key={index} className="relative w-24 h-24 rounded-md overflow-hidden border border-gray-200">
-                      <img src={preview} alt="Preview" className="w-full h-full object-cover" />
+                      <img src={preview} alt="Preview" className="w-full h-full object-contain" />
                       <button type="button" onClick={() => removeImage(index)} className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 hover:bg-red-700">
                         <X size={12} />
                       </button>

@@ -239,7 +239,7 @@ export default function Billing() {
               >
                 <div className="h-24 bg-gray-100 rounded-md mb-2 overflow-hidden">
                   {product.imageUrls?.[0] ? (
-                    <img src={product.imageUrls[0]} alt={product.name} className="w-full h-full object-cover" />
+                    <img src={product.imageUrls[0]} alt={product.name} className="w-full h-full object-contain" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">No Image</div>
                   )}
