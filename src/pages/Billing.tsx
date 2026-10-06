@@ -20,6 +20,8 @@ export default function Billing() {
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [deliveryDate, setDeliveryDate] = useState('');
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
+  const [amountPaid, setAmountPaid] = useState<number | ''>('');
+  const [balanceDueDate, setBalanceDueDate] = useState('');
 
   const filteredProducts = products.filter(p =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -110,6 +112,8 @@ export default function Billing() {
 
   const handleCheckoutClick = () => {
     if (cart.length === 0) return;
+    setAmountPaid(grandTotal);
+    setBalanceDueDate('');
     setIsCheckoutModalOpen(true);
   };
 
@@ -149,6 +153,9 @@ export default function Billing() {
         });
       }
 
+      const paidAmount = Number(amountPaid) || 0;
+      const dueAmount = grandTotal - paidAmount;
+
       const invoicePayload: any = {
         customerId: finalCustomerId,
         customerName: customerName,
@@ -157,13 +164,17 @@ export default function Billing() {
         discount,
         tax,
         total: grandTotal,
-        paidAmount: grandTotal, // Assuming fully paid 
-        dueAmount: 0,
+        paidAmount: paidAmount,
+        dueAmount: dueAmount,
         paymentMethods: ['Cash'], // Default to cash
-        status: 'Paid',
+        status: dueAmount > 0 ? (paidAmount > 0 ? 'Partial' : 'Due') : 'Paid',
         profit,
         date: new Date(invoiceDate).getTime(),
       };
+
+      if (dueAmount > 0 && balanceDueDate) {
+        invoicePayload.balanceDueDate = new Date(balanceDueDate).getTime();
+      }
 
       if (deliveryDate) {
         invoicePayload.deliveryDate = new Date(deliveryDate).getTime();
@@ -178,13 +189,14 @@ export default function Billing() {
         if (customer) {
           await updateCustomer(finalCustomerId, {
             totalPurchases: (customer.totalPurchases || 0) + 1,
-            paidAmount: (customer.paidAmount || 0) + grandTotal
+            paidAmount: (customer.paidAmount || 0) + paidAmount,
+            dueAmount: (customer.dueAmount || 0) + dueAmount
           });
         } else {
-          // It was a newly added customer, we don't have them in the snapshot yet, so we just update directly based on 0
           await updateCustomer(finalCustomerId, {
             totalPurchases: 1,
-            paidAmount: grandTotal
+            paidAmount: paidAmount,
+            dueAmount: dueAmount
           });
         }
       }
@@ -427,13 +439,39 @@ export default function Billing() {
                       className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Amount Paid (₹)</label>
+                    <input 
+                      type="number" 
+                      value={amountPaid === '' ? '' : amountPaid}
+                      onChange={(e) => setAmountPaid(e.target.value === '' ? '' : Number(e.target.value))}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+                  {grandTotal - (Number(amountPaid) || 0) > 0 && (
+                    <div className="bg-orange-50 p-3 rounded-md border border-orange-200">
+                      <div className="flex justify-between items-center mb-2 text-orange-800 font-semibold">
+                        <span>Balance Due:</span>
+                        <span>₹{(grandTotal - (Number(amountPaid) || 0)).toFixed(2)}</span>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-orange-800 mb-1">Balance Promised Date *</label>
+                        <input 
+                          type="date" 
+                          value={balanceDueDate}
+                          onChange={(e) => setBalanceDueDate(e.target.value)}
+                          className="w-full border border-orange-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-orange-500"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
               
               <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
                 <button
                   type="button"
-                  disabled={isProcessing || !customerPhone || !customerName}
+                  disabled={isProcessing || !customerPhone || !customerName || (grandTotal - (Number(amountPaid) || 0) > 0 && !balanceDueDate)}
                   onClick={confirmCheckout}
                   className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
                 >

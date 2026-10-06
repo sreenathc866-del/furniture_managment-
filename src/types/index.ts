@@ -61,6 +61,7 @@ export interface Invoice {
   deliveryStatus?: 'Pending' | 'Delivered';
   driverId?: string; // ID of the assigned driver
   driverCharge?: number; // Amount paid to the driver for this delivery
+  balanceDueDate?: number; // The date they promised to pay the balance
 }
 
 export interface Supplier {

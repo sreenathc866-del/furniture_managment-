@@ -18,12 +18,17 @@ export default function Dashboard() {
   // Get recent sales (last 5)
   const recentSales = [...invoices].sort((a, b) => b.date - a.date).slice(0, 5);
 
+  const pendingPayments = invoices.reduce((sum, inv) => sum + (inv.dueAmount || 0), 0);
+  
+  const pendingBalanceInvoices = invoices.filter(inv => inv.dueAmount > 0 && inv.balanceDueDate);
+  pendingBalanceInvoices.sort((a, b) => (a.balanceDueDate || 0) - (b.balanceDueDate || 0));
+
   const stats = [
     { label: "Today's Sales", value: `₹${todaysSales.toFixed(2)}`, icon: <IndianRupee size={24} className="text-emerald-600" />, bg: 'bg-emerald-50' },
     { label: 'Total Products', value: products.length.toString(), icon: <Package size={24} className="text-blue-600" />, bg: 'bg-blue-50' },
     { label: 'Low Stock', value: lowStockProducts.length.toString(), icon: <AlertTriangle size={24} className="text-amber-600" />, bg: 'bg-amber-50' },
     { label: "Today's Bills", value: invoices.length.toString(), icon: <ReceiptText size={24} className="text-indigo-600" />, bg: 'bg-indigo-50' },
-    { label: 'Pending Payments', value: '₹0.00', icon: <Clock size={24} className="text-rose-600" />, bg: 'bg-rose-50' },
+    { label: 'Pending Payments', value: `₹${pendingPayments.toFixed(2)}`, icon: <Clock size={24} className="text-rose-600" />, bg: 'bg-rose-50' },
     { label: 'Customers', value: customers.length.toString(), icon: <Users size={24} className="text-violet-600" />, bg: 'bg-violet-50' },
   ];
 
@@ -107,6 +112,41 @@ export default function Dashboard() {
                   View all low stock products
                 </Link>
               )}
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="grid grid-cols-1 gap-6">
+        <div className="bg-white shadow rounded-lg border border-gray-100 p-5">
+          <h2 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+            <Clock size={20} className="mr-2 text-rose-600" />
+            Pending Balance Alerts
+          </h2>
+          {pendingBalanceInvoices.length === 0 ? (
+            <div className="text-sm text-gray-500 text-center py-4">
+              No pending balance alerts.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {pendingBalanceInvoices.map(invoice => {
+                const isOverdue = new Date().getTime() > (invoice.balanceDueDate || 0);
+                return (
+                  <div key={invoice.id} className={`p-4 border rounded-md ${isOverdue ? 'bg-red-50 border-red-200' : 'bg-orange-50 border-orange-200'}`}>
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="font-semibold text-gray-900">{invoice.customerName}</div>
+                      <div className={`text-xs font-bold px-2 py-1 rounded-full ${isOverdue ? 'bg-red-200 text-red-800' : 'bg-orange-200 text-orange-800'}`}>
+                        {isOverdue ? 'Overdue' : 'Upcoming'}
+                      </div>
+                    </div>
+                    <div className="text-sm text-gray-600 mb-1">Invoice: <Link to="/sales" className="text-blue-600 hover:underline">{invoice.id}</Link></div>
+                    <div className="text-sm font-medium text-gray-900 mb-2">Due Amount: ₹{invoice.dueAmount.toFixed(2)}</div>
+                    <div className="text-xs text-gray-500 flex items-center">
+                      <Clock size={12} className="mr-1" />
+                      Promised Date: {new Date(invoice.balanceDueDate!).toLocaleDateString('en-IN')}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
