@@ -47,7 +47,15 @@ export default function Inventory() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
+          <div className="flex items-center text-gray-500 mb-2">
+            <PackageSearch size={18} className="mr-2" />
+            <h3 className="font-semibold text-sm">Total Products</h3>
+          </div>
+          <p className="text-3xl font-bold text-gray-900">{products.length} <span className="text-sm font-medium text-gray-500">types</span></p>
+        </div>
+
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
           <div className="flex items-center text-gray-500 mb-2">
             <PackageSearch size={18} className="mr-2" />
