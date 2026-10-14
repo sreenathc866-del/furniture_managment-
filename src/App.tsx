@@ -13,6 +13,7 @@ const Customers = React.lazy(() => import('./pages/Customers'));
 const Suppliers = React.lazy(() => import('./pages/Suppliers'));
 const Deliveries = React.lazy(() => import('./pages/Deliveries'));
 const Inventory = React.lazy(() => import('./pages/Inventory'));
+const Purchases = React.lazy(() => import('./pages/Purchases'));
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { currentUser, loading } = useAuth();
@@ -44,7 +45,7 @@ function App() {
                 <Route path="billing" element={<Billing />} />
                 <Route path="customers" element={<Customers />} />
                 <Route path="suppliers" element={<Suppliers />} />
-                <Route path="purchases" element={<div>Purchases Page</div>} />
+                <Route path="purchases" element={<Purchases />} />
                 <Route path="sales" element={<Sales />} />
                 <Route path="deliveries" element={<Deliveries />} />
                 <Route path="reports" element={<div>Reports Page</div>} />

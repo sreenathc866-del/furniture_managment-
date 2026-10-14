@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { collection, onSnapshot, query, addDoc, updateDoc, doc, deleteDoc, runTransaction, getDocs, orderBy, limit, setDoc, where } from 'firebase/firestore';
 import { db } from '../services/firebase';
-import type { Product, Customer, Invoice, Supplier, DeliveryDriver } from '../types';
+import type { Product, Customer, Invoice, Supplier, DeliveryDriver, Purchase } from '../types';
 import { useAuth } from './AuthContext';
 
 interface DataContextType {
@@ -10,6 +10,7 @@ interface DataContextType {
   invoices: Invoice[];
   suppliers: Supplier[];
   drivers: DeliveryDriver[];
+  purchases: Purchase[];
   loading: boolean;
   addProduct: (product: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   updateProduct: (id: string, product: Partial<Product>) => Promise<void>;
@@ -22,6 +23,8 @@ interface DataContextType {
   updateSupplier: (id: string, updates: Partial<Supplier>) => Promise<void>;
   addDriver: (driverData: Omit<DeliveryDriver, 'id' | 'createdAt' | 'updatedAt'>) => Promise<string>;
   updateDriver: (id: string, updates: Partial<DeliveryDriver>) => Promise<void>;
+  addPurchase: (purchaseData: Omit<Purchase, 'id' | 'createdAt' | 'updatedAt'>) => Promise<string>;
+  updatePurchase: (id: string, updates: Partial<Purchase>) => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -40,6 +43,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [drivers, setDrivers] = useState<DeliveryDriver[]>([]);
+  const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [loading, setLoading] = useState(true);
   const { currentUser } = useAuth();
 
@@ -66,6 +70,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setDrivers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as DeliveryDriver)));
     });
 
+    const unsubscribePurchases = onSnapshot(collection(db, 'purchases'), (snapshot) => {
+      setPurchases(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Purchase)));
+    });
+
     setLoading(false);
 
     return () => {
@@ -74,6 +82,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       unsubscribeInvoices();
       unsubscribeSuppliers();
       unsubscribeDrivers();
+      unsubscribePurchases();
     };
   }, [currentUser]);
 
@@ -242,8 +251,62 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return newId;
   };
 
-  const updateDriver = async (id: string, updates: Partial<DeliveryDriver>) => {
-    await updateDoc(doc(db, 'drivers', id), {
+  const generatePurchaseId = async () => {
+    const purchasesRef = collection(db, 'purchases');
+    const q = query(purchasesRef, orderBy('createdAt', 'desc'), limit(1));
+    const querySnapshot = await getDocs(q);
+    
+    let nextNum = 1;
+    if (!querySnapshot.empty) {
+      const lastPurchase = querySnapshot.docs[0].data() as Purchase;
+      const lastIdMatch = lastPurchase.id?.match(/PUR-\d{4}-(\d+)/);
+      if (lastIdMatch) {
+        nextNum = parseInt(lastIdMatch[1], 10) + 1;
+      }
+    }
+    const year = new Date().getFullYear();
+    return `PUR-${year}-${String(nextNum).padStart(5, '0')}`;
+  };
+
+  const addPurchase = async (purchaseData: Omit<Purchase, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const customId = await generatePurchaseId();
+    const timestamp = Date.now();
+    const newPurchase: Purchase = {
+      ...purchaseData,
+      id: customId,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    };
+
+    // Increment stock for each item purchased
+    const stockPromises = purchaseData.items.map(item => {
+      const product = products.find(p => p.id === item.productId);
+      if (product) {
+        return updateProduct(product.id, {
+          stockQuantity: (product.stockQuantity || 0) + item.quantity,
+          productPrice: item.purchasePrice > 0 ? item.purchasePrice : product.productPrice
+        });
+      }
+      return Promise.resolve();
+    });
+    await Promise.all(stockPromises);
+
+    // If there is an unpaid balance and a supplier is specified, update supplier balance
+    if (purchaseData.dueAmount > 0 && purchaseData.supplierId) {
+      const supplier = suppliers.find(s => s.id === purchaseData.supplierId);
+      if (supplier) {
+        await updateSupplier(supplier.id, {
+          balanceAmount: (supplier.balanceAmount || 0) + purchaseData.dueAmount
+        });
+      }
+    }
+
+    await setDoc(doc(db, 'purchases', customId), newPurchase);
+    return customId;
+  };
+
+  const updatePurchase = async (id: string, updates: Partial<Purchase>) => {
+    await updateDoc(doc(db, 'purchases', id), {
       ...updates,
       updatedAt: Date.now()
     });
@@ -255,6 +318,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     invoices,
     suppliers,
     drivers,
+    purchases,
     loading,
     addProduct,
     updateProduct,
@@ -266,7 +330,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     addSupplier,
     updateSupplier,
     addDriver,
-    updateDriver
+    updateDriver,
+    addPurchase,
+    updatePurchase
   };
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;

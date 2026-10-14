@@ -84,3 +84,29 @@ export interface DeliveryDriver {
   createdAt: number;
   updatedAt: number;
 }
+
+export interface PurchaseItem {
+  productId: string;
+  name: string;
+  sku: string;
+  quantity: number;
+  purchasePrice: number;
+  total: number;
+}
+
+export interface Purchase {
+  id: string;
+  supplierId: string;
+  supplierName: string;
+  supplierInvoiceNumber?: string;
+  items: PurchaseItem[];
+  total: number;
+  paidAmount: number;
+  dueAmount: number;
+  paymentMethod: string;
+  status: 'Paid' | 'Partial' | 'Due';
+  date: number;
+  notes?: string;
+  createdAt: number;
+  updatedAt: number;
+}
