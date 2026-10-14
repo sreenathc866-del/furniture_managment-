@@ -143,7 +143,7 @@ export default function Deliveries() {
                       <div className="text-sm text-gray-500">{inv.items.length} items • ₹{inv.total.toFixed(2)}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900 flex items-center"><User size={14} className="mr-1 text-gray-400"/> {inv.customerName}</div>
+                      <div className="text-sm font-medium text-gray-900 flex items-center"><User size={14} className="mr-1 text-gray-400"/> {inv.customerName || 'Walk-in Customer'}</div>
                       <div className="text-sm text-indigo-600 font-semibold flex items-center mt-1">
                         <Calendar size={14} className="mr-1" /> {new Date(inv.deliveryDate!).toLocaleDateString('en-IN')}
                       </div>

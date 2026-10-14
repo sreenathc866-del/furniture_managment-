@@ -12,7 +12,7 @@ export default function Customers() {
     const searchLower = searchTerm.toLowerCase();
     
     // Check basic details
-    if (c.name.toLowerCase().includes(searchLower) || c.phone.includes(searchLower)) {
+    if ((c.name || '').toLowerCase().includes(searchLower) || (c.phone || '').includes(searchLower)) {
       return true;
     }
     
@@ -62,9 +62,9 @@ export default function Customers() {
                   onClick={() => setSelectedCustomer(customer)}
                   className={`p-4 cursor-pointer hover:bg-gray-50 transition-colors ${selectedCustomer?.id === customer.id ? 'bg-blue-50 border-l-4 border-blue-500' : ''}`}
                 >
-                  <div className="font-semibold text-gray-900">{customer.name}</div>
+                  <div className="font-semibold text-gray-900">{customer.name || 'Unnamed Customer'}</div>
                   <div className="text-sm text-gray-600 flex items-center mt-1">
-                    <Phone size={14} className="mr-1" /> {customer.phone}
+                    <Phone size={14} className="mr-1" /> {customer.phone || 'No phone'}
                   </div>
                 </li>
               ))}
@@ -80,10 +80,10 @@ export default function Customers() {
             <div className="p-6 border-b border-gray-200 bg-gray-50 flex justify-between items-start">
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 flex items-center">
-                  <User className="mr-2 text-blue-500" /> {selectedCustomer.name}
+                  <User className="mr-2 text-blue-500" /> {selectedCustomer.name || 'Unnamed Customer'}
                 </h2>
                 <div className="mt-4 grid grid-cols-2 gap-4 text-sm text-gray-600">
-                  <div className="flex items-center"><Phone size={16} className="mr-2 text-gray-400" /> {selectedCustomer.phone}</div>
+                  <div className="flex items-center"><Phone size={16} className="mr-2 text-gray-400" /> {selectedCustomer.phone || 'No phone'}</div>
                   <div className="flex items-center"><Receipt size={16} className="mr-2 text-gray-400" /> Total Purchases: {selectedCustomer.totalPurchases || customerInvoices.length}</div>
                 </div>
               </div>

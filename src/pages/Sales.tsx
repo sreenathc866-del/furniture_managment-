@@ -1,10 +1,16 @@
 import React, { useState } from 'react';
 import { useData } from '../context/DataContext';
-import { Search, FileText, ArrowLeftRight, User, Phone, Calendar, AlertTriangle } from 'lucide-react';
+import { Search, FileText, ArrowLeftRight, User, Phone, Calendar, AlertTriangle, Edit } from 'lucide-react';
 import type { Invoice } from '../types';
 
+const toLocalDateTimeInputString = (timestamp: number) => {
+  const d = new Date(timestamp);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
 export default function Sales() {
-  const { invoices, updateInvoice } = useData();
+  const { invoices, customers, updateInvoice } = useData();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
 
@@ -14,24 +20,25 @@ export default function Sales() {
   const [editStatus, setEditStatus] = useState<'Paid' | 'Partial' | 'Due' | 'Returned' | 'Exchanged'>('Paid');
   const [editReason, setEditReason] = useState('');
 
-  // Advanced search: search by Invoice ID, Customer Name, or Customer ID (which is often a phone number if we set it up that way, or we can look up the customer record, but invoices store customerName and customerId)
+  // Advanced search: search by Invoice ID, Customer Name, Customer ID, or Phone
   const filteredInvoices = invoices.filter(inv => {
     const term = searchTerm.toLowerCase();
     const dateStr = new Date(inv.date).toLocaleDateString('en-IN').toLowerCase();
+    const custName = (inv.customerName || '').toLowerCase();
+    const custId = (inv.customerId || '').toLowerCase();
+    const matchedCustomer = customers.find(c => c.id === inv.customerId);
+    const custPhone = (matchedCustomer?.phone || '').toLowerCase();
     return (
-      inv.id.toLowerCase().includes(term) ||
-      inv.customerName.toLowerCase().includes(term) ||
-      inv.customerId.toLowerCase().includes(term) ||
+      (inv.id || '').toLowerCase().includes(term) ||
+      custName.includes(term) ||
+      custId.includes(term) ||
+      custPhone.includes(term) ||
       dateStr.includes(term)
     );
   }).sort((a, b) => b.date - a.date); // Newest first
 
-  const handleReturnExchange = (invoice: Invoice) => {
-    // Format date for datetime-local input
-    const d = new Date(invoice.date);
-    const dateStr = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-    
-    setEditDate(dateStr);
+  const handleEditInvoice = (invoice: Invoice) => {
+    setEditDate(toLocalDateTimeInputString(invoice.date));
     setEditStatus(invoice.status || 'Paid');
     setEditReason(invoice.returnReason || '');
     setIsEditModalOpen(true);
@@ -98,7 +105,7 @@ export default function Sales() {
                     <span className="text-sm font-bold text-green-600">₹{invoice.total.toFixed(2)}</span>
                   </div>
                   <div className="text-sm text-gray-600 flex items-center">
-                    <User size={14} className="mr-1" /> {invoice.customerName}
+                    <User size={14} className="mr-1" /> {invoice.customerName || 'Walk-in Customer'}
                   </div>
                   <div className="text-xs text-gray-400 mt-2 flex items-center">
                     <Calendar size={12} className="mr-1" /> 
@@ -119,8 +126,8 @@ export default function Sales() {
               <div>
                 <h2 className="text-2xl font-bold text-gray-900">Invoice {selectedInvoice.id}</h2>
                 <div className="mt-2 text-sm text-gray-600 space-y-1">
-                  <div className="flex items-center"><User size={16} className="mr-2 text-gray-400" /> {selectedInvoice.customerName}</div>
-                  <div className="flex items-center"><Phone size={16} className="mr-2 text-gray-400" /> {selectedInvoice.customerId}</div>
+                  <div className="flex items-center"><User size={16} className="mr-2 text-gray-400" /> {selectedInvoice.customerName || 'Walk-in Customer'}</div>
+                  <div className="flex items-center"><Phone size={16} className="mr-2 text-gray-400" /> {customers.find(c => c.id === selectedInvoice.customerId)?.phone || (selectedInvoice.customerId ? selectedInvoice.customerId : 'No Phone Provided')}</div>
                   <div className="flex items-center"><Calendar size={16} className="mr-2 text-gray-400" /> Date: {new Date(selectedInvoice.date).toLocaleString('en-IN')}</div>
                   {selectedInvoice.deliveryDate && (
                     <div className="flex items-center text-indigo-600 font-medium">
@@ -147,11 +154,11 @@ export default function Sales() {
               </div>
               <div className="flex flex-col space-y-3">
                 <button 
-                  onClick={() => handleReturnExchange(selectedInvoice)}
-                  className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-red-700 bg-red-50 hover:bg-red-100 focus:outline-none"
+                  onClick={() => handleEditInvoice(selectedInvoice)}
+                  className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
                 >
-                  <ArrowLeftRight size={16} className="mr-2" />
-                  Return / Exchange
+                  <Edit size={16} className="mr-2 text-blue-600" />
+                  Edit Date / Return
                 </button>
                 <button 
                   onClick={() => window.print()}
@@ -237,7 +244,16 @@ export default function Sales() {
                 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Invoice Date & Time</label>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="block text-sm font-medium text-gray-700">Invoice Date & Time</label>
+                      <button
+                        type="button"
+                        onClick={() => setEditDate(toLocalDateTimeInputString(Date.now()))}
+                        className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                      >
+                        Set to Current Time
+                      </button>
+                    </div>
                     <input 
                       type="datetime-local" 
                       value={editDate}

@@ -3,6 +3,16 @@ import { useData } from '../context/DataContext';
 import { Search, ShoppingCart, IndianRupee, Printer, AlertTriangle } from 'lucide-react';
 import type { Product, InvoiceItem } from '../types';
 
+const getLocalDateTimeString = (d: Date = new Date()) => {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const year = d.getFullYear();
+  const month = pad(d.getMonth() + 1);
+  const day = pad(d.getDate());
+  const hours = pad(d.getHours());
+  const minutes = pad(d.getMinutes());
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
 export default function Billing() {
   const { products, customers, addInvoice, addCustomer, updateCustomer } = useData();
   const [searchTerm, setSearchTerm] = useState('');
@@ -19,7 +29,7 @@ export default function Billing() {
   const [customerName, setCustomerName] = useState('');
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [deliveryDate, setDeliveryDate] = useState('');
-  const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
+  const [invoiceDateTime, setInvoiceDateTime] = useState(getLocalDateTimeString());
   const [amountPaid, setAmountPaid] = useState<number | ''>('');
   const [balanceDueDate, setBalanceDueDate] = useState('');
 
@@ -114,22 +124,18 @@ export default function Billing() {
     if (cart.length === 0) return;
     setAmountPaid(grandTotal);
     setBalanceDueDate('');
+    setInvoiceDateTime(getLocalDateTimeString());
     setIsCheckoutModalOpen(true);
   };
 
   const confirmCheckout = async () => {
-
-    // Ensure customer details are entered
-    if (!customerPhone || !customerName) {
-      alert("Please enter Customer Name and Phone Number");
-      return;
-    }
-    
-    // Clean up the phone number to check digits
-    const digitsOnly = customerPhone.replace(/\D/g, '');
-    if (digitsOnly.length < 10) {
-      alert("Please enter a valid phone number with at least 10 digits");
-      return;
+    // If phone number is provided, ensure it has at least 10 digits
+    if (customerPhone.trim()) {
+      const digitsOnly = customerPhone.replace(/\D/g, '');
+      if (digitsOnly.length < 10) {
+        alert("Please enter a valid phone number with at least 10 digits");
+        return;
+      }
     }
 
     setIsProcessing(true);
@@ -142,13 +148,15 @@ export default function Billing() {
 
     try {
       let finalCustomerId = selectedCustomerId;
+      const trimmedName = customerName.trim();
+      const trimmedPhone = customerPhone.trim();
 
-      if (!finalCustomerId) {
-        // Create new customer
+      if (!finalCustomerId && (trimmedName || trimmedPhone)) {
+        // Create new customer if details were provided
         finalCustomerId = await addCustomer({
-          name: customerName,
-          phone: customerPhone,
-          whatsapp: customerPhone, // Default whatsapp to phone
+          name: trimmedName || (trimmedPhone ? `Customer (${trimmedPhone})` : 'Walk-in Customer'),
+          phone: trimmedPhone,
+          whatsapp: trimmedPhone, // Default whatsapp to phone
           address: '',
         });
       }
@@ -156,9 +164,11 @@ export default function Billing() {
       const paidAmount = Number(amountPaid) || 0;
       const dueAmount = grandTotal - paidAmount;
 
+      const invoiceTimestamp = invoiceDateTime ? new Date(invoiceDateTime).getTime() : Date.now();
+
       const invoicePayload: any = {
-        customerId: finalCustomerId,
-        customerName: customerName,
+        customerId: finalCustomerId || '',
+        customerName: trimmedName || (finalCustomerId ? customers.find(c => c.id === finalCustomerId)?.name : '') || 'Walk-in Customer',
         items: cart,
         subtotal,
         discount,
@@ -169,15 +179,18 @@ export default function Billing() {
         paymentMethods: ['Cash'], // Default to cash
         status: dueAmount > 0 ? (paidAmount > 0 ? 'Partial' : 'Due') : 'Paid',
         profit,
-        date: new Date(invoiceDate).getTime(),
+        date: isNaN(invoiceTimestamp) ? Date.now() : invoiceTimestamp,
       };
 
       if (dueAmount > 0 && balanceDueDate) {
-        invoicePayload.balanceDueDate = new Date(balanceDueDate).getTime();
+        // Set balanceDueDate to end of the selected day in local time
+        const [by, bm, bd] = balanceDueDate.split('-').map(Number);
+        invoicePayload.balanceDueDate = new Date(by, bm - 1, bd, 23, 59, 59).getTime();
       }
 
       if (deliveryDate) {
-        invoicePayload.deliveryDate = new Date(deliveryDate).getTime();
+        const [dy, dm, dd] = deliveryDate.split('-').map(Number);
+        invoicePayload.deliveryDate = new Date(dy, dm - 1, dd, 12, 0, 0).getTime();
         invoicePayload.deliveryStatus = 'Pending';
       }
 
@@ -212,7 +225,7 @@ export default function Billing() {
       setCustomerName('');
       setSelectedCustomerId(null);
       setDeliveryDate('');
-      setInvoiceDate(new Date().toISOString().split('T')[0]);
+      setInvoiceDateTime(getLocalDateTimeString());
       setIsCheckoutModalOpen(false);
     } catch (error) {
       console.error("Error saving invoice:", error);
@@ -392,16 +405,25 @@ export default function Billing() {
 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Invoice Date *</label>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="block text-sm font-medium text-gray-700">Invoice Date & Time *</label>
+                      <button
+                        type="button"
+                        onClick={() => setInvoiceDateTime(getLocalDateTimeString())}
+                        className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                      >
+                        Set Current Time
+                      </button>
+                    </div>
                     <input 
-                      type="date" 
-                      value={invoiceDate}
-                      onChange={(e) => setInvoiceDate(e.target.value)}
+                      type="datetime-local" 
+                      value={invoiceDateTime}
+                      onChange={(e) => setInvoiceDateTime(e.target.value)}
                       className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number (Optional)</label>
                     <input 
                       type="text" 
                       value={customerPhone}
@@ -411,7 +433,7 @@ export default function Billing() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name (Optional)</label>
                     <input 
                       type="text" 
                       value={customerName}
@@ -471,7 +493,7 @@ export default function Billing() {
               <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
                 <button
                   type="button"
-                  disabled={isProcessing || !customerPhone || !customerName || (grandTotal - (Number(amountPaid) || 0) > 0 && !balanceDueDate)}
+                  disabled={isProcessing || (grandTotal - (Number(amountPaid) || 0) > 0 && !balanceDueDate)}
                   onClick={confirmCheckout}
                   className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
                 >
