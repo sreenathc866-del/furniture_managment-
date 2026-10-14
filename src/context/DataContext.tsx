@@ -251,6 +251,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return newId;
   };
 
+  const updateDriver = async (id: string, updates: Partial<DeliveryDriver>) => {
+    await updateDoc(doc(db, 'drivers', id), {
+      ...updates,
+      updatedAt: Date.now()
+    });
+  };
+
   const generatePurchaseId = async () => {
     const purchasesRef = collection(db, 'purchases');
     const q = query(purchasesRef, orderBy('createdAt', 'desc'), limit(1));
