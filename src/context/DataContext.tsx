@@ -17,6 +17,7 @@ interface DataContextType {
   deleteProduct: (id: string) => Promise<void>;
   addInvoice: (invoiceData: Omit<Invoice, 'id'> & { date?: number }) => Promise<string>;
   updateInvoice: (id: string, updates: Partial<Invoice>) => Promise<void>;
+  deleteInvoice: (id: string, restoreStock?: boolean) => Promise<void>;
   addCustomer: (customerData: Omit<Customer, 'id' | 'createdAt' | 'updatedAt' | 'totalPurchases' | 'paidAmount' | 'dueAmount'>) => Promise<string>;
   updateCustomer: (id: string, updates: Partial<Customer>) => Promise<void>;
   addSupplier: (supplierData: Omit<Supplier, 'id' | 'createdAt' | 'updatedAt' | 'balanceAmount'>) => Promise<string>;
@@ -193,6 +194,39 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await updateDoc(doc(db, 'invoices', id), updates);
   };
 
+  const deleteInvoice = async (id: string, restoreStock: boolean = true) => {
+    const invoice = invoices.find(inv => inv.id === id);
+    if (!invoice) return;
+
+    // Restore stock if requested
+    if (restoreStock && invoice.items && invoice.items.length > 0) {
+      const stockPromises = invoice.items.map(item => {
+        const product = products.find(p => p.id === item.productId);
+        if (product) {
+          return updateProduct(product.id, {
+            stockQuantity: (product.stockQuantity || 0) + item.quantity
+          });
+        }
+        return Promise.resolve();
+      });
+      await Promise.all(stockPromises);
+    }
+
+    // Revert customer statistics if customer is linked
+    if (invoice.customerId) {
+      const customer = customers.find(c => c.id === invoice.customerId);
+      if (customer) {
+        await updateCustomer(customer.id, {
+          totalPurchases: Math.max(0, (customer.totalPurchases || 1) - 1),
+          paidAmount: Math.max(0, (customer.paidAmount || 0) - (invoice.paidAmount || 0)),
+          dueAmount: Math.max(0, (customer.dueAmount || 0) - (invoice.dueAmount || 0))
+        });
+      }
+    }
+
+    await deleteDoc(doc(db, 'invoices', id));
+  };
+
   const addCustomer = async (customerData: Omit<Customer, 'id' | 'createdAt' | 'updatedAt' | 'totalPurchases' | 'paidAmount' | 'dueAmount'>) => {
     // We can use phone number as ID, or generate a custom one. Phone is better for lookup.
     // Ensure phone is unique by checking if they exist first, though we'll handle that on the UI side.
@@ -332,6 +366,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     deleteProduct,
     addInvoice,
     updateInvoice,
+    deleteInvoice,
     addCustomer,
     updateCustomer,
     addSupplier,

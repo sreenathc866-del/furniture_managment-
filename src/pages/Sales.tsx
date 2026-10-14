@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useData } from '../context/DataContext';
-import { Search, FileText, ArrowLeftRight, User, Phone, Calendar, AlertTriangle, Edit } from 'lucide-react';
+import { Search, FileText, ArrowLeftRight, User, Phone, Calendar, AlertTriangle, Edit, Trash2 } from 'lucide-react';
 import type { Invoice } from '../types';
 
 const toLocalDateTimeInputString = (timestamp: number) => {
@@ -10,15 +10,22 @@ const toLocalDateTimeInputString = (timestamp: number) => {
 };
 
 export default function Sales() {
-  const { invoices, customers, updateInvoice } = useData();
+  const { invoices, customers, updateInvoice, deleteInvoice, addCustomer, updateCustomer } = useData();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
 
   // Edit Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editDate, setEditDate] = useState('');
+  const [editCustomerName, setEditCustomerName] = useState('');
+  const [editCustomerPhone, setEditCustomerPhone] = useState('');
   const [editStatus, setEditStatus] = useState<'Paid' | 'Partial' | 'Due' | 'Returned' | 'Exchanged'>('Paid');
+  const [editPaidAmount, setEditPaidAmount] = useState<number | ''>('');
+  const [editBalanceDueDate, setEditBalanceDueDate] = useState('');
+  const [editDeliveryDate, setEditDeliveryDate] = useState('');
+  const [editDeliveryStatus, setEditDeliveryStatus] = useState<'Pending' | 'Delivered'>('Pending');
   const [editReason, setEditReason] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   // Advanced search: search by Invoice ID, Customer Name, Customer ID, or Phone
   const filteredInvoices = invoices.filter(inv => {
@@ -39,31 +46,130 @@ export default function Sales() {
 
   const handleEditInvoice = (invoice: Invoice) => {
     setEditDate(toLocalDateTimeInputString(invoice.date));
+    setEditCustomerName(invoice.customerName || '');
+    const matchedCust = customers.find(c => c.id === invoice.customerId);
+    setEditCustomerPhone(matchedCust?.phone || (invoice.customerId && !invoice.customerId.startsWith('CUS-') ? invoice.customerId : ''));
     setEditStatus(invoice.status || 'Paid');
+    setEditPaidAmount(invoice.paidAmount !== undefined ? invoice.paidAmount : invoice.total);
+    
+    if (invoice.balanceDueDate) {
+      const d = new Date(invoice.balanceDueDate);
+      const pad = (n: number) => String(n).padStart(2, '0');
+      setEditBalanceDueDate(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
+    } else {
+      setEditBalanceDueDate('');
+    }
+
+    if (invoice.deliveryDate) {
+      const d = new Date(invoice.deliveryDate);
+      const pad = (n: number) => String(n).padStart(2, '0');
+      setEditDeliveryDate(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
+      setEditDeliveryStatus(invoice.deliveryStatus || 'Pending');
+    } else {
+      setEditDeliveryDate('');
+      setEditDeliveryStatus('Pending');
+    }
+
     setEditReason(invoice.returnReason || '');
     setIsEditModalOpen(true);
   };
 
   const saveEdit = async () => {
     if (!selectedInvoice) return;
+    setIsSaving(true);
     try {
-      await updateInvoice(selectedInvoice.id, {
-        date: new Date(editDate).getTime(),
+      const newTimestamp = editDate ? new Date(editDate).getTime() : selectedInvoice.date;
+      const parsedPaid = editPaidAmount === '' ? 0 : Number(editPaidAmount);
+      const newDue = Math.max(0, selectedInvoice.total - parsedPaid);
+
+      let finalCustId = selectedInvoice.customerId;
+      const trimmedName = editCustomerName.trim();
+      const trimmedPhone = editCustomerPhone.trim();
+
+      if (trimmedName || trimmedPhone) {
+        if (finalCustId) {
+          const cust = customers.find(c => c.id === finalCustId);
+          if (cust) {
+            await updateCustomer(finalCustId, {
+              name: trimmedName || cust.name,
+              phone: trimmedPhone || cust.phone,
+              whatsapp: trimmedPhone || cust.whatsapp
+            });
+          }
+        } else if (trimmedPhone) {
+          const existing = customers.find(c => c.phone === trimmedPhone);
+          if (existing) {
+            finalCustId = existing.id;
+          } else {
+            finalCustId = await addCustomer({
+              name: trimmedName || `Customer (${trimmedPhone})`,
+              phone: trimmedPhone,
+              whatsapp: trimmedPhone,
+              address: ''
+            });
+          }
+        }
+      }
+
+      const updates: any = {
+        date: newTimestamp,
+        customerName: trimmedName || selectedInvoice.customerName || 'Walk-in Customer',
+        customerId: finalCustId || '',
         status: editStatus,
-        returnReason: editReason
-      });
+        paidAmount: parsedPaid,
+        dueAmount: newDue,
+        returnReason: editReason.trim()
+      };
+
+      if (newDue > 0 && editBalanceDueDate) {
+        const [by, bm, bd] = editBalanceDueDate.split('-').map(Number);
+        updates.balanceDueDate = new Date(by, bm - 1, bd, 23, 59, 59).getTime();
+      } else {
+        updates.balanceDueDate = null;
+      }
+
+      if (editDeliveryDate) {
+        const [dy, dm, dd] = editDeliveryDate.split('-').map(Number);
+        updates.deliveryDate = new Date(dy, dm - 1, dd, 12, 0, 0).getTime();
+        updates.deliveryStatus = editDeliveryStatus;
+      } else {
+        updates.deliveryDate = null;
+      }
+
+      await updateInvoice(selectedInvoice.id, updates);
       setIsEditModalOpen(false);
-      
-      // Update selected invoice in view
+
       setSelectedInvoice({
         ...selectedInvoice,
-        date: new Date(editDate).getTime(),
-        status: editStatus,
-        returnReason: editReason
+        ...updates
       });
       alert('Invoice updated successfully!');
     } catch (error) {
+      console.error(error);
       alert('Failed to update invoice.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteInvoice = async (invoice: Invoice) => {
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete Invoice ${invoice.id}?\n\n` +
+      `• Customer: ${invoice.customerName || 'Walk-in'}\n` +
+      `• Total Amount: ₹${invoice.total.toFixed(2)}\n\n` +
+      `This will return all sold items back into inventory stock.`
+    );
+    if (!confirmDelete) return;
+
+    try {
+      await deleteInvoice(invoice.id, true);
+      alert(`Invoice ${invoice.id} deleted successfully and inventory stock restored.`);
+      if (selectedInvoice?.id === invoice.id) {
+        setSelectedInvoice(null);
+      }
+    } catch (err) {
+      console.error('Error deleting invoice:', err);
+      alert('Failed to delete invoice.');
     }
   };
 
@@ -102,7 +208,20 @@ export default function Sales() {
                 >
                   <div className="flex justify-between items-start mb-1">
                     <span className="font-semibold text-gray-900">{invoice.id}</span>
-                    <span className="text-sm font-bold text-green-600">₹{invoice.total.toFixed(2)}</span>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm font-bold text-green-600">₹{invoice.total.toFixed(2)}</span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteInvoice(invoice);
+                        }}
+                        title="Delete Invoice"
+                        className="text-gray-400 hover:text-red-600 p-0.5 rounded transition-colors"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </div>
                   <div className="text-sm text-gray-600 flex items-center">
                     <User size={14} className="mr-1" /> {invoice.customerName || 'Walk-in Customer'}
@@ -122,7 +241,7 @@ export default function Sales() {
       <div className="flex-1 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col overflow-hidden ml-6">
         {selectedInvoice ? (
           <>
-            <div className="p-6 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+            <div className="p-6 border-b border-gray-200 flex justify-between items-start bg-gray-50">
               <div>
                 <h2 className="text-2xl font-bold text-gray-900">Invoice {selectedInvoice.id}</h2>
                 <div className="mt-2 text-sm text-gray-600 space-y-1">
@@ -152,20 +271,27 @@ export default function Sales() {
                   )}
                 </div>
               </div>
-              <div className="flex flex-col space-y-3">
+              <div className="flex flex-col space-y-2">
                 <button 
                   onClick={() => handleEditInvoice(selectedInvoice)}
-                  className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
+                  className="inline-flex items-center justify-center px-4 py-2 border border-blue-300 shadow-sm text-sm font-medium rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors"
                 >
-                  <Edit size={16} className="mr-2 text-blue-600" />
-                  Edit Date / Return
+                  <Edit size={16} className="mr-1.5" />
+                  Edit Invoice
                 </button>
                 <button 
                   onClick={() => window.print()}
-                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none justify-center"
+                  className="inline-flex items-center justify-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-colors"
                 >
-                  <FileText size={16} className="mr-2" />
+                  <FileText size={16} className="mr-1.5" />
                   Print Receipt
+                </button>
+                <button 
+                  onClick={() => handleDeleteInvoice(selectedInvoice)}
+                  className="inline-flex items-center justify-center px-4 py-2 border border-red-200 shadow-sm text-sm font-medium rounded-md text-red-600 bg-red-50 hover:bg-red-100 hover:text-red-700 transition-colors"
+                >
+                  <Trash2 size={16} className="mr-1.5" />
+                  Delete Invoice
                 </button>
               </div>
             </div>
@@ -228,24 +354,62 @@ export default function Sales() {
         )}
       </div>
 
-      {/* Edit / Return Modal */}
-      {isEditModalOpen && (
+      {/* Edit Invoice Modal */}
+      {isEditModalOpen && selectedInvoice && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:p-0">
-            <div className="fixed inset-0 transition-opacity" aria-hidden="true" onClick={() => setIsEditModalOpen(false)}>
+            <div className="fixed inset-0 transition-opacity" aria-hidden="true" onClick={() => !isSaving && setIsEditModalOpen(false)}>
               <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
             </div>
 
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4 border-b pb-2">
-                  Edit Invoice / Log Return
-                </h3>
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-xl sm:w-full">
+              <div className="bg-white px-5 pt-5 pb-4 sm:p-6">
+                <div className="flex justify-between items-center mb-4 border-b pb-3">
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900">
+                      Edit Invoice ({selectedInvoice.id})
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Update invoice details, customer information, status, and payment balance.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setIsEditModalOpen(false)}
+                    className="text-gray-400 hover:text-gray-600 font-bold"
+                  >
+                    ✕
+                  </button>
+                </div>
                 
-                <div className="space-y-4">
+                <div className="space-y-4 max-h-[65vh] overflow-y-auto pr-1">
+                  {/* Customer Details */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Customer Name</label>
+                      <input 
+                        type="text" 
+                        value={editCustomerName}
+                        onChange={(e) => setEditCustomerName(e.target.value)}
+                        placeholder="Customer Name"
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Customer Phone</label>
+                      <input 
+                        type="text" 
+                        value={editCustomerPhone}
+                        onChange={(e) => setEditCustomerPhone(e.target.value)}
+                        placeholder="Phone Number"
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Date & Time */}
                   <div>
                     <div className="flex justify-between items-center mb-1">
-                      <label className="block text-sm font-medium text-gray-700">Invoice Date & Time</label>
+                      <label className="block text-xs font-semibold text-gray-700 uppercase">Invoice Date & Time *</label>
                       <button
                         type="button"
                         onClick={() => setEditDate(toLocalDateTimeInputString(Date.now()))}
@@ -262,49 +426,137 @@ export default function Sales() {
                     />
                   </div>
                   
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                    <select 
-                      value={editStatus}
-                      onChange={(e) => setEditStatus(e.target.value as any)}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    >
-                      <option value="Paid">Paid</option>
-                      <option value="Partial">Partial</option>
-                      <option value="Due">Due</option>
-                      <option value="Returned">Returned</option>
-                      <option value="Exchanged">Exchanged</option>
-                    </select>
+                  {/* Status & Payment */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Status</label>
+                      <select 
+                        value={editStatus}
+                        onChange={(e) => setEditStatus(e.target.value as any)}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      >
+                        <option value="Paid">Paid</option>
+                        <option value="Partial">Partial</option>
+                        <option value="Due">Due</option>
+                        <option value="Returned">Returned</option>
+                        <option value="Exchanged">Exchanged</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
+                        Amount Paid (₹) / Total: ₹{selectedInvoice.total.toFixed(2)}
+                      </label>
+                      <input 
+                        type="number"
+                        min="0"
+                        max={selectedInvoice.total}
+                        value={editPaidAmount === '' ? '' : editPaidAmount}
+                        onChange={(e) => {
+                          const val = e.target.value === '' ? '' : Number(e.target.value);
+                          setEditPaidAmount(val);
+                          const paidNum = val === '' ? 0 : Number(val);
+                          const due = selectedInvoice.total - paidNum;
+                          if (due <= 0 && editStatus !== 'Returned' && editStatus !== 'Exchanged') {
+                            setEditStatus('Paid');
+                          } else if (due > 0 && paidNum > 0 && editStatus !== 'Returned' && editStatus !== 'Exchanged') {
+                            setEditStatus('Partial');
+                          } else if (due > 0 && paidNum === 0 && editStatus !== 'Returned' && editStatus !== 'Exchanged') {
+                            setEditStatus('Due');
+                          }
+                        }}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Balance Due warning & Promised Date */}
+                  {selectedInvoice.total - (Number(editPaidAmount) || 0) > 0 && (
+                    <div className="bg-orange-50 p-3 rounded-md border border-orange-200">
+                      <div className="flex justify-between items-center mb-2 text-orange-800 text-xs font-bold">
+                        <span>Balance Due:</span>
+                        <span>₹{(selectedInvoice.total - (Number(editPaidAmount) || 0)).toFixed(2)}</span>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-orange-800 mb-1">Balance Promised Date</label>
+                        <input 
+                          type="date" 
+                          value={editBalanceDueDate}
+                          onChange={(e) => setEditBalanceDueDate(e.target.value)}
+                          className="w-full border border-orange-300 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-orange-500"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Delivery Info */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Scheduled Delivery Date (Optional)</label>
+                      <input 
+                        type="date" 
+                        value={editDeliveryDate}
+                        onChange={(e) => setEditDeliveryDate(e.target.value)}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Delivery Status</label>
+                      <select 
+                        value={editDeliveryStatus}
+                        onChange={(e) => setEditDeliveryStatus(e.target.value as any)}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      >
+                        <option value="Pending">Pending</option>
+                        <option value="Delivered">Delivered</option>
+                      </select>
+                    </div>
                   </div>
                   
+                  {/* Notes / Reason */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Reason / Notes (Damaged, Exchanged, etc.)</label>
+                    <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Reason / Notes</label>
                     <textarea 
                       value={editReason}
                       onChange={(e) => setEditReason(e.target.value)}
-                      rows={3}
-                      placeholder="e.g. Product was damaged, exchanged for a new one."
+                      rows={2}
+                      placeholder="e.g. Return reason, exchange details, or special notes..."
                       className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
                 </div>
               </div>
               
-              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+              <div className="bg-gray-50 px-4 py-3 sm:px-6 flex flex-col sm:flex-row justify-between items-center gap-2">
                 <button
                   type="button"
-                  onClick={saveEdit}
-                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none sm:ml-3 sm:w-auto sm:text-sm"
+                  disabled={isSaving}
+                  onClick={() => {
+                    setIsEditModalOpen(false);
+                    handleDeleteInvoice(selectedInvoice);
+                  }}
+                  className="inline-flex items-center text-red-600 hover:text-red-800 text-sm font-semibold transition-colors order-2 sm:order-1"
                 >
-                  Save Changes
+                  <Trash2 size={16} className="mr-1.5" />
+                  Delete This Invoice
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setIsEditModalOpen(false)}
-                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-                >
-                  Cancel
-                </button>
+                <div className="flex space-x-2 order-1 sm:order-2 w-full sm:w-auto justify-end">
+                  <button
+                    type="button"
+                    disabled={isSaving}
+                    onClick={() => setIsEditModalOpen(false)}
+                    className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isSaving}
+                    onClick={saveEdit}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-bold shadow-sm disabled:opacity-50"
+                  >
+                    {isSaving ? 'Saving...' : 'Save Changes'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
