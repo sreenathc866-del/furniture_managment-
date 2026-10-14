@@ -39,6 +39,7 @@ export interface InvoiceItem {
   discount: number;
   tax: number;
   total: number; // (actualSellingPrice - discount + tax) * quantity
+  delivered?: boolean; // Whether this product has been delivered / taken
 }
 
 export interface Invoice {
@@ -57,11 +58,13 @@ export interface Invoice {
   date: number;
   profit: number; // Total profit for this invoice
   returnReason?: string; // Reason for return/exchange
-  deliveryDate?: number; // Scheduled delivery date
-  deliveryStatus?: 'Pending' | 'Delivered';
+  returnedItems?: { productId: string; name: string; sku: string; quantity: number; returnDate: number; refundAmount: number; reason: string }[];
+  exchangeDetails?: { oldItemName: string; newItemName: string; oldItemId: string; newItemId: string; priceDifference: number; date: number; reason: string };
+  deliveryDate?: number | null; // Scheduled delivery date
+  deliveryStatus?: 'Pending' | 'Delivered' | 'Partial';
   driverId?: string; // ID of the assigned driver
   driverCharge?: number; // Amount paid to the driver for this delivery
-  balanceDueDate?: number; // The date they promised to pay the balance
+  balanceDueDate?: number | null; // The date they promised to pay the balance
 }
 
 export interface Supplier {
@@ -109,4 +112,19 @@ export interface Purchase {
   notes?: string;
   createdAt: number;
   updatedAt: number;
+}
+
+export interface DeletedRecord {
+  id: string; // e.g. DEL-INV-1718000000000
+  type: 'invoice' | 'product';
+  originalId: string;
+  title: string;
+  reason: string;
+  deletedAt: number;
+  amount?: number;
+  customerName?: string;
+  customerId?: string;
+  items?: InvoiceItem[];
+  stockRestored: boolean;
+  data: any;
 }

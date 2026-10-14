@@ -29,6 +29,7 @@ export default function Billing() {
   const [customerName, setCustomerName] = useState('');
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [deliveryDate, setDeliveryDate] = useState('');
+  const [deliveryMode, setDeliveryMode] = useState<'store' | 'delivery'>('store');
   const [invoiceDateTime, setInvoiceDateTime] = useState(getLocalDateTimeString());
   const [amountPaid, setAmountPaid] = useState<number | ''>('');
   const [balanceDueDate, setBalanceDueDate] = useState('');
@@ -124,7 +125,7 @@ export default function Billing() {
     if (cart.length === 0) return;
     setAmountPaid(grandTotal);
     setBalanceDueDate('');
-    setInvoiceDateTime(getLocalDateTimeString());
+    setInvoiceDateTime(getLocalDateTimeString(new Date()));
     setIsCheckoutModalOpen(true);
   };
 
@@ -164,7 +165,20 @@ export default function Billing() {
       const paidAmount = Number(amountPaid) || 0;
       const dueAmount = grandTotal - paidAmount;
 
-      const invoiceTimestamp = invoiceDateTime ? new Date(invoiceDateTime).getTime() : Date.now();
+      let invoiceTimestamp = Date.now();
+      if (invoiceDateTime) {
+        const [datePart, timePart] = invoiceDateTime.split('T');
+        if (datePart && timePart) {
+          const [y, m, d] = datePart.split('-').map(Number);
+          const [hh, mm] = timePart.split(':').map(Number);
+          const now = new Date();
+          invoiceTimestamp = new Date(y, m - 1, d, hh, mm, now.getSeconds()).getTime();
+        } else if (datePart) {
+          const [y, m, d] = datePart.split('-').map(Number);
+          const now = new Date();
+          invoiceTimestamp = new Date(y, m - 1, d, now.getHours(), now.getMinutes(), now.getSeconds()).getTime();
+        }
+      }
 
       const invoicePayload: any = {
         customerId: finalCustomerId || '',
@@ -188,10 +202,23 @@ export default function Billing() {
         invoicePayload.balanceDueDate = new Date(by, bm - 1, bd, 23, 59, 59).getTime();
       }
 
-      if (deliveryDate) {
-        const [dy, dm, dd] = deliveryDate.split('-').map(Number);
-        invoicePayload.deliveryDate = new Date(dy, dm - 1, dd, 12, 0, 0).getTime();
+      if (deliveryMode === 'delivery' || deliveryDate) {
+        if (deliveryDate) {
+          const [dy, dm, dd] = deliveryDate.split('-').map(Number);
+          invoicePayload.deliveryDate = new Date(dy, dm - 1, dd, 12, 0, 0).getTime();
+        }
         invoicePayload.deliveryStatus = 'Pending';
+        invoicePayload.items = cart.map(item => ({
+          ...item,
+          delivered: false
+        }));
+      } else {
+        // Customer takes items at billing time (Store Pickup / Immediate Delivery)
+        invoicePayload.deliveryStatus = 'Delivered';
+        invoicePayload.items = cart.map(item => ({
+          ...item,
+          delivered: true
+        }));
       }
 
       const invoiceId = await addInvoice(invoicePayload);
@@ -225,6 +252,7 @@ export default function Billing() {
       setCustomerName('');
       setSelectedCustomerId(null);
       setDeliveryDate('');
+      setDeliveryMode('store');
       setInvoiceDateTime(getLocalDateTimeString());
       setIsCheckoutModalOpen(false);
     } catch (error) {
@@ -409,7 +437,7 @@ export default function Billing() {
                       <label className="block text-sm font-medium text-gray-700">Invoice Date & Time *</label>
                       <button
                         type="button"
-                        onClick={() => setInvoiceDateTime(getLocalDateTimeString())}
+                        onClick={() => setInvoiceDateTime(getLocalDateTimeString(new Date()))}
                         className="text-xs text-blue-600 hover:text-blue-800 font-medium"
                       >
                         Set Current Time
@@ -452,15 +480,54 @@ export default function Billing() {
                       <span className="mr-1">✓</span> Existing Customer Selected
                     </div>
                   )}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Scheduled Delivery Date (Optional)</label>
-                    <input 
-                      type="date" 
-                      value={deliveryDate}
-                      onChange={(e) => setDeliveryDate(e.target.value)}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
+                  {/* Delivery & Fulfillment Option */}
+                  <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
+                      Delivery / Fulfillment Option
+                    </label>
+                    <div className="grid grid-cols-2 gap-2 mb-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDeliveryMode('store');
+                          setDeliveryDate('');
+                        }}
+                        className={`py-2 px-2 text-xs font-bold rounded-lg border text-center transition-all ${
+                          deliveryMode === 'store'
+                            ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+                        }`}
+                      >
+                        🏬 Taking Now (Store Handover)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDeliveryMode('delivery')}
+                        className={`py-2 px-2 text-xs font-bold rounded-lg border text-center transition-all ${
+                          deliveryMode === 'delivery'
+                            ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                            : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
+                        }`}
+                      >
+                        🚚 Deliver Later (Scheduled)
+                      </button>
+                    </div>
+
+                    {deliveryMode === 'delivery' && (
+                      <div className="mt-2 pt-2 border-t border-gray-200">
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">
+                          Scheduled Delivery Date (Optional)
+                        </label>
+                        <input 
+                          type="date" 
+                          value={deliveryDate}
+                          onChange={(e) => setDeliveryDate(e.target.value)}
+                          className="w-full border border-gray-300 rounded-md px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        />
+                      </div>
+                    )}
                   </div>
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Amount Paid (₹)</label>
                     <input 
