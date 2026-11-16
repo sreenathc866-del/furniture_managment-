@@ -24,37 +24,31 @@ export default function Dashboard() {
   pendingBalanceInvoices.sort((a, b) => (a.balanceDueDate || 0) - (b.balanceDueDate || 0));
 
   const stats = [
-    { label: "Today's Sales", value: `₹${todaysSales.toFixed(2)}`, icon: <IndianRupee size={24} className="text-emerald-600" />, bg: 'bg-emerald-50' },
-    { label: 'Total Products', value: products.length.toString(), icon: <Package size={24} className="text-blue-600" />, bg: 'bg-blue-50' },
-    { label: 'Low Stock', value: lowStockProducts.length.toString(), icon: <AlertTriangle size={24} className="text-amber-600" />, bg: 'bg-amber-50' },
-    { label: "Today's Bills", value: invoices.length.toString(), icon: <ReceiptText size={24} className="text-indigo-600" />, bg: 'bg-indigo-50' },
-    { label: 'Pending Payments', value: `₹${pendingPayments.toFixed(2)}`, icon: <Clock size={24} className="text-rose-600" />, bg: 'bg-rose-50' },
-    { label: 'Customers', value: customers.length.toString(), icon: <Users size={24} className="text-violet-600" />, bg: 'bg-violet-50' },
+    { label: "Today's Sales", value: `₹${todaysSales.toFixed(2)}`, icon: <IndianRupee size={22} className="text-emerald-600" />, bg: 'bg-emerald-50' },
+    { label: 'Total Products', value: products.length.toString(), icon: <Package size={22} className="text-blue-600" />, bg: 'bg-blue-50' },
+    { label: 'Low Stock', value: lowStockProducts.length.toString(), icon: <AlertTriangle size={22} className="text-amber-600" />, bg: 'bg-amber-50' },
+    { label: "Today's Bills", value: invoices.length.toString(), icon: <ReceiptText size={22} className="text-indigo-600" />, bg: 'bg-indigo-50' },
+    { label: 'Pending Payments', value: `₹${pendingPayments.toFixed(2)}`, icon: <Clock size={22} className="text-rose-600" />, bg: 'bg-rose-50' },
+    { label: 'Customers', value: customers.length.toString(), icon: <Users size={22} className="text-violet-600" />, bg: 'bg-violet-50' },
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 sm:space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="mt-1 text-sm text-gray-500">Overview of your store's performance.</p>
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Dashboard</h1>
+        <p className="mt-0.5 text-xs sm:text-sm text-gray-500">Overview of your store's performance.</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-5">
         {stats.map((stat) => (
-          <div key={stat.label} className="bg-white overflow-hidden shadow rounded-lg border border-gray-100">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className={`flex-shrink-0 rounded-md p-3 ${stat.bg}`}>
-                  {stat.icon}
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">{stat.label}</dt>
-                    <dd>
-                      <div className="text-lg font-bold text-gray-900">{stat.value}</div>
-                    </dd>
-                  </dl>
-                </div>
+          <div key={stat.label} className="bg-white overflow-hidden shadow-sm rounded-lg sm:rounded-xl border border-gray-100 p-3.5 sm:p-5">
+            <div className="flex flex-col sm:flex-row sm:items-center">
+              <div className={`flex-shrink-0 rounded-lg p-2.5 sm:p-3 w-fit mb-2 sm:mb-0 ${stat.bg}`}>
+                {stat.icon}
+              </div>
+              <div className="sm:ml-4 w-full min-w-0">
+                <p className="text-xs font-medium text-gray-500 truncate">{stat.label}</p>
+                <p className="text-base sm:text-lg lg:text-xl font-bold text-gray-900 truncate mt-0.5">{stat.value}</p>
               </div>
             </div>
           </div>

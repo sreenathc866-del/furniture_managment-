@@ -19,6 +19,7 @@ export default function Billing() {
   const [cart, setCart] = useState<InvoiceItem[]>([]);
   const [discount, setDiscount] = useState(0);
   const [tax, setTax] = useState(0);
+  const [mobileTab, setMobileTab] = useState<'products' | 'cart'>('products');
 
   // Checkout modal states
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
@@ -264,17 +265,39 @@ export default function Billing() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] space-x-6">
+    <div className="flex flex-col md:flex-row h-[calc(100vh-8.5rem)] md:h-[calc(100vh-8rem)] md:space-x-6 space-y-4 md:space-y-0">
+      {/* Mobile Switcher (Products vs Cart) */}
+      <div className="flex md:hidden bg-gray-200 p-1 rounded-lg">
+        <button
+          type="button"
+          onClick={() => setMobileTab('products')}
+          className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+            mobileTab === 'products' ? 'bg-white text-blue-700 shadow-xs' : 'text-gray-600'
+          }`}
+        >
+          Select Products ({filteredProducts.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileTab('cart')}
+          className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-colors relative ${
+            mobileTab === 'cart' ? 'bg-white text-blue-700 shadow-xs' : 'text-gray-600'
+          }`}
+        >
+          Cart ({cart.reduce((s, i) => s + i.quantity, 0)}) • ₹{grandTotal.toFixed(0)}
+        </button>
+      </div>
+
       {/* Product Selection Area */}
-      <div className="flex-1 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col overflow-hidden">
-        <div className="p-4 border-b border-gray-200">
+      <div className={`flex-1 bg-white rounded-lg shadow-sm border border-gray-200 flex-col overflow-hidden ${mobileTab === 'products' ? 'flex' : 'hidden md:flex'}`}>
+        <div className="p-3 sm:p-4 border-b border-gray-200">
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-gray-400" />
+              <Search className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
             </div>
             <input
               type="text"
-              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              className="block w-full pl-9 sm:pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 text-xs sm:text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               placeholder="Scan barcode or search by name/SKU..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -282,29 +305,29 @@ export default function Billing() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4">
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
             {filteredProducts.map(product => (
               <div
                 key={product.id}
                 onClick={() => addToCart(product)}
-                className={`cursor-pointer rounded-lg border p-3 hover:border-blue-500 hover:shadow-md transition-all ${product.stockQuantity <= 0 ? 'opacity-50 border-red-200 bg-red-50' : 'border-gray-200 bg-white'}`}
+                className={`cursor-pointer rounded-lg border p-2.5 sm:p-3 hover:border-blue-500 hover:shadow-md transition-all ${product.stockQuantity <= 0 ? 'opacity-50 border-red-200 bg-red-50' : 'border-gray-200 bg-white'}`}
               >
-                <div className="h-24 bg-gray-100 rounded-md mb-2 overflow-hidden">
+                <div className="h-20 sm:h-24 bg-gray-100 rounded-md mb-2 overflow-hidden flex items-center justify-center">
                   {product.imageUrls?.[0] ? (
                     <img src={product.imageUrls[0]} alt={product.name} className="w-full h-full object-contain" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">No Image</div>
                   )}
                 </div>
-                <h3 className="text-sm font-semibold text-gray-900 truncate">{product.name}</h3>
-                <p className="text-xs text-gray-500">{product.sku}</p>
-                <div className="mt-2 flex justify-between items-end">
+                <h3 className="text-xs sm:text-sm font-semibold text-gray-900 truncate">{product.name}</h3>
+                <p className="text-[11px] text-gray-500 truncate">{product.sku}</p>
+                <div className="mt-1.5 flex justify-between items-end">
                   <div className="flex flex-col">
-                    <span className="text-sm font-bold text-blue-600" title="Telling Price">TP: ₹{product.finalSellingPrice}</span>
-                    <span className="text-xs text-gray-500 font-medium" title="Last Price">LP: ₹{product.productPrice}</span>
+                    <span className="text-xs sm:text-sm font-bold text-blue-600" title="Telling Price">TP: ₹{product.finalSellingPrice}</span>
+                    <span className="text-[10px] text-gray-500 font-medium" title="Last Price">LP: ₹{product.productPrice}</span>
                   </div>
-                  <span className={`text-xs px-2 rounded-full ${product.stockQuantity > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${product.stockQuantity > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                     {product.stockQuantity} in stock
                   </span>
                 </div>
@@ -315,13 +338,13 @@ export default function Billing() {
       </div>
 
       {/* Cart Area */}
-      <div className="w-[400px] bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col">
-        <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 rounded-t-lg">
-          <h2 className="text-lg font-bold text-gray-900 flex items-center">
-            <ShoppingCart className="mr-2" size={20} />
+      <div className={`w-full md:w-[380px] lg:w-[400px] bg-white rounded-lg shadow-sm border border-gray-200 flex-col overflow-hidden ${mobileTab === 'cart' ? 'flex' : 'hidden md:flex'}`}>
+        <div className="p-3 sm:p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 rounded-t-lg">
+          <h2 className="text-base sm:text-lg font-bold text-gray-900 flex items-center">
+            <ShoppingCart className="mr-2" size={18} />
             Current Invoice
           </h2>
-          <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded">
+          <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2 py-0.5 rounded">
             {cart.length} items
           </span>
         </div>

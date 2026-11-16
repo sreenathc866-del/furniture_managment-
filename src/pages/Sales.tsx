@@ -554,19 +554,19 @@ export default function Sales() {
   };
 
   return (
-    <div className="space-y-6 flex h-[calc(100vh-8rem)]">
+    <div className="flex flex-col md:flex-row md:space-x-6 h-[calc(100vh-8.5rem)] md:h-[calc(100vh-8rem)]">
       {/* Left panel: Invoice List */}
-      <div className="w-1/3 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col overflow-hidden">
-        <div className="p-4 border-b border-gray-200">
-          <h2 className="text-lg font-bold text-gray-900 mb-4">Sales History</h2>
+      <div className={`w-full md:w-1/3 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col overflow-hidden ${selectedInvoice ? 'hidden md:flex' : 'flex'}`}>
+        <div className="p-3.5 sm:p-4 border-b border-gray-200">
+          <h2 className="text-base sm:text-lg font-bold text-gray-900 mb-2 sm:mb-4">Sales History</h2>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-gray-400" />
+              <Search className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
             </div>
             <input
               type="text"
-              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-              placeholder="Search Bill #, Name, Phone, Date..."
+              className="block w-full pl-9 sm:pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Search Bill #, Name, Phone..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -575,7 +575,7 @@ export default function Sales() {
 
         <div className="flex-1 overflow-y-auto">
           {filteredInvoices.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">
+            <div className="p-8 text-center text-gray-500 text-sm">
               No sales found matching your search.
             </div>
           ) : (
@@ -584,10 +584,10 @@ export default function Sales() {
                 <li 
                   key={invoice.id} 
                   onClick={() => setSelectedInvoice(invoice)}
-                  className={`p-4 cursor-pointer hover:bg-gray-50 transition-colors ${selectedInvoice?.id === invoice.id ? 'bg-blue-50 border-l-4 border-blue-500' : ''}`}
+                  className={`p-3.5 sm:p-4 cursor-pointer hover:bg-gray-50 transition-colors ${selectedInvoice?.id === invoice.id ? 'bg-blue-50 border-l-4 border-blue-500' : ''}`}
                 >
                   <div className="flex justify-between items-start mb-1">
-                    <span className="font-semibold text-gray-900">{invoice.id}</span>
+                    <span className="font-semibold text-gray-900 text-sm sm:text-base">{invoice.id}</span>
                     <div className="flex items-center space-x-2">
                       <span className="text-sm font-bold text-green-600">₹{invoice.total.toFixed(2)}</span>
                       <button
@@ -597,16 +597,16 @@ export default function Sales() {
                           handleDeleteInvoice(invoice);
                         }}
                         title="Delete Invoice"
-                        className="text-gray-400 hover:text-red-600 p-0.5 rounded transition-colors"
+                        className="text-gray-400 hover:text-red-600 p-1 rounded transition-colors"
                       >
-                        <Trash2 size={14} />
+                        <Trash2 size={15} />
                       </button>
                     </div>
                   </div>
-                  <div className="text-sm text-gray-600 flex items-center">
-                    <User size={14} className="mr-1" /> {invoice.customerName || 'Walk-in Customer'}
+                  <div className="text-xs sm:text-sm text-gray-600 flex items-center">
+                    <User size={13} className="mr-1 text-gray-400" /> {invoice.customerName || 'Walk-in Customer'}
                   </div>
-                  <div className="text-xs text-gray-400 mt-2 flex items-center">
+                  <div className="text-[11px] sm:text-xs text-gray-400 mt-1.5 flex items-center">
                     <Calendar size={12} className="mr-1" /> 
                     {new Date(invoice.date).toLocaleDateString('en-IN')} at {new Date(invoice.date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                   </div>
@@ -618,18 +618,26 @@ export default function Sales() {
       </div>
 
       {/* Right panel: Invoice Details */}
-      <div className="flex-1 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col overflow-hidden ml-6">
+      <div className={`w-full md:flex-1 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col overflow-hidden md:ml-0 ${!selectedInvoice ? 'hidden md:flex' : 'flex'}`}>
         {selectedInvoice ? (
           <>
-            <div className="p-6 border-b border-gray-200 flex justify-between items-start bg-gray-50">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900">Invoice {selectedInvoice.id}</h2>
-                <div className="mt-2 text-sm text-gray-600 space-y-1">
-                  <div className="flex items-center"><User size={16} className="mr-2 text-gray-400" /> {selectedInvoice.customerName || 'Walk-in Customer'}</div>
-                  <div className="flex items-center"><Phone size={16} className="mr-2 text-gray-400" /> {customers.find(c => c.id === selectedInvoice.customerId)?.phone || (selectedInvoice.customerId ? selectedInvoice.customerId : 'No Phone Provided')}</div>
+            <div className="p-4 sm:p-6 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start bg-gray-50 gap-4">
+              <div className="w-full sm:w-auto">
+                <div className="flex items-center justify-between sm:justify-start">
+                  <button
+                    onClick={() => setSelectedInvoice(null)}
+                    className="md:hidden inline-flex items-center text-xs font-semibold text-blue-600 hover:text-blue-800 mr-2 py-1 px-2 rounded bg-blue-50"
+                  >
+                    ← Back to list
+                  </button>
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Invoice {selectedInvoice.id}</h2>
+                </div>
+                <div className="mt-2 text-xs sm:text-sm text-gray-600 space-y-1">
+                  <div className="flex items-center"><User size={15} className="mr-2 text-gray-400" /> {selectedInvoice.customerName || 'Walk-in Customer'}</div>
+                  <div className="flex items-center"><Phone size={15} className="mr-2 text-gray-400" /> {customers.find(c => c.id === selectedInvoice.customerId)?.phone || (selectedInvoice.customerId ? selectedInvoice.customerId : 'No Phone Provided')}</div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <div className="flex items-center text-sm text-gray-700">
-                      <Calendar size={16} className="mr-2 text-gray-400" />
+                    <div className="flex items-center text-xs sm:text-sm text-gray-700">
+                      <Calendar size={15} className="mr-1.5 text-gray-400" />
                       <span>
                         Date: <strong className="text-gray-900">{new Date(selectedInvoice.date).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })}</strong> at <strong className="text-gray-900">{new Date(selectedInvoice.date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}</strong>
                       </span>
@@ -641,15 +649,15 @@ export default function Sales() {
                         await updateInvoice(selectedInvoice.id, { date: now });
                         setSelectedInvoice({ ...selectedInvoice, date: now });
                       }}
-                      className="inline-flex items-center text-xs font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition-colors shadow-2xs"
+                      className="inline-flex items-center text-[11px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition-colors"
                       title="Update this invoice's timestamp to the current local time"
                     >
-                      <Clock size={12} className="mr-1 text-blue-600" /> Set to Current Time
+                      <Clock size={11} className="mr-1 text-blue-600" /> Set to Current Time
                     </button>
                   </div>
                   {selectedInvoice.deliveryDate && (
-                    <div className="flex items-center text-indigo-600 font-medium">
-                      <Calendar size={16} className="mr-2 text-indigo-400" /> Delivery Scheduled: {new Date(selectedInvoice.deliveryDate).toLocaleDateString('en-IN')}
+                    <div className="flex items-center text-indigo-600 font-medium text-xs sm:text-sm">
+                      <Calendar size={15} className="mr-1.5 text-indigo-400" /> Delivery Scheduled: {new Date(selectedInvoice.deliveryDate).toLocaleDateString('en-IN')}
                     </div>
                   )}
                   <div className="flex flex-wrap items-center gap-2 pt-1">
@@ -681,53 +689,53 @@ export default function Sales() {
                     >
                       <Truck size={12} className="mr-1" />
                       Delivery: {(selectedInvoice.deliveryStatus === 'Delivered' || (!selectedInvoice.deliveryDate && !selectedInvoice.deliveryStatus)) ? 'Delivered' : selectedInvoice.deliveryStatus === 'Partial' ? 'Partially Delivered' : 'Pending'} 
-                      <span className="text-[10px] opacity-70 ml-1.5 font-normal">(Click to toggle)</span>
+                      <span className="text-[10px] opacity-70 ml-1.5 font-normal">(Toggle)</span>
                     </button>
                   </div>
                   {selectedInvoice.returnReason && (
-                    <div className="flex items-start text-red-600 mt-2 bg-red-50 p-2 rounded border border-red-100">
-                      <AlertTriangle size={16} className="mr-2 mt-0.5" /> 
+                    <div className="flex items-start text-red-600 mt-2 bg-red-50 p-2 rounded border border-red-100 text-xs">
+                      <AlertTriangle size={15} className="mr-1.5 mt-0.5 flex-shrink-0" /> 
                       <span className="italic">Note: {selectedInvoice.returnReason}</span>
                     </div>
                   )}
                 </div>
               </div>
-              <div className="flex flex-col space-y-2">
+              <div className="grid grid-cols-2 sm:flex sm:flex-col gap-2 w-full sm:w-auto">
                 <button 
                   onClick={() => handleOpenReturnExchange(selectedInvoice, 'return')}
-                  className="inline-flex items-center justify-center px-4 py-2 border border-amber-300 shadow-sm text-sm font-medium rounded-md text-amber-800 bg-amber-50 hover:bg-amber-100 transition-colors"
+                  className="inline-flex items-center justify-center px-3 py-2 border border-amber-300 shadow-xs text-xs sm:text-sm font-medium rounded-md text-amber-800 bg-amber-50 hover:bg-amber-100 transition-colors"
                 >
-                  <ArrowLeftRight size={16} className="mr-1.5 text-amber-600" />
+                  <ArrowLeftRight size={15} className="mr-1.5 text-amber-600" />
                   Return / Exchange
                 </button>
                 <button 
                   onClick={() => handleEditInvoice(selectedInvoice)}
-                  className="inline-flex items-center justify-center px-4 py-2 border border-blue-300 shadow-sm text-sm font-medium rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors"
+                  className="inline-flex items-center justify-center px-3 py-2 border border-blue-300 shadow-xs text-xs sm:text-sm font-medium rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors"
                 >
-                  <Edit size={16} className="mr-1.5" />
+                  <Edit size={15} className="mr-1.5" />
                   Edit Invoice
                 </button>
                 <button 
                   onClick={() => window.print()}
-                  className="inline-flex items-center justify-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+                  className="inline-flex items-center justify-center px-3 py-2 border border-transparent shadow-xs text-xs sm:text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-colors"
                 >
-                  <FileText size={16} className="mr-1.5" />
+                  <FileText size={15} className="mr-1.5" />
                   Print Receipt
                 </button>
                 <button 
                   onClick={() => handleDeleteInvoice(selectedInvoice)}
-                  className="inline-flex items-center justify-center px-4 py-2 border border-red-200 shadow-sm text-sm font-medium rounded-md text-red-600 bg-red-50 hover:bg-red-100 hover:text-red-700 transition-colors"
+                  className="inline-flex items-center justify-center px-3 py-2 border border-red-200 shadow-xs text-xs sm:text-sm font-medium rounded-md text-red-600 bg-red-50 hover:bg-red-100 hover:text-red-700 transition-colors"
                 >
-                  <Trash2 size={16} className="mr-1.5" />
+                  <Trash2 size={15} className="mr-1.5" />
                   Delete Invoice
                 </button>
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Items Purchased</h3>
-              <div className="border border-gray-200 rounded-md overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+              <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-3 sm:mb-4">Items Purchased</h3>
+              <div className="border border-gray-200 rounded-md overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200 text-xs sm:text-sm">
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>

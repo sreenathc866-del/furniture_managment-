@@ -40,76 +40,73 @@ export default function Inventory() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Inventory Audit & Alerts</h1>
-        <p className="text-sm text-gray-500">Track total warehouse value, low stock warnings, and quickly adjust counts.</p>
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Inventory Audit & Alerts</h1>
+        <p className="text-xs sm:text-sm text-gray-500">Track total warehouse value, low stock warnings, and quickly adjust counts.</p>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
-          <div className="flex items-center text-gray-500 mb-2">
-            <PackageSearch size={18} className="mr-2" />
-            <h3 className="font-semibold text-sm">Total Products</h3>
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4">
+        <div className="bg-white rounded-lg shadow-xs border border-gray-200 p-3.5 sm:p-5">
+          <div className="flex items-center text-gray-500 mb-1.5 sm:mb-2">
+            <PackageSearch size={16} className="mr-1.5" />
+            <h3 className="font-semibold text-xs sm:text-sm truncate">Total Products</h3>
           </div>
-          <p className="text-3xl font-bold text-gray-900">{products.length} <span className="text-sm font-medium text-gray-500">types</span></p>
+          <p className="text-xl sm:text-3xl font-bold text-gray-900">{products.length} <span className="text-xs sm:text-sm font-medium text-gray-500">types</span></p>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
-          <div className="flex items-center text-gray-500 mb-2">
-            <PackageSearch size={18} className="mr-2" />
-            <h3 className="font-semibold text-sm">Total Items in Stock</h3>
+        <div className="bg-white rounded-lg shadow-xs border border-gray-200 p-3.5 sm:p-5">
+          <div className="flex items-center text-gray-500 mb-1.5 sm:mb-2">
+            <PackageSearch size={16} className="mr-1.5" />
+            <h3 className="font-semibold text-xs sm:text-sm truncate">Stock Units</h3>
           </div>
-          <p className="text-3xl font-bold text-gray-900">{totalItemsInStock} <span className="text-sm font-medium text-gray-500">units</span></p>
+          <p className="text-xl sm:text-3xl font-bold text-gray-900">{totalItemsInStock} <span className="text-xs sm:text-sm font-medium text-gray-500">units</span></p>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
-          <div className="flex items-center text-gray-500 mb-2">
-            <IndianRupee size={18} className="mr-2 text-blue-500" />
-            <h3 className="font-semibold text-sm">Warehouse Value (LP)</h3>
+        <div className="bg-white rounded-lg shadow-xs border border-gray-200 p-3.5 sm:p-5">
+          <div className="flex items-center text-gray-500 mb-1.5 sm:mb-2">
+            <IndianRupee size={16} className="mr-1 text-blue-500" />
+            <h3 className="font-semibold text-xs sm:text-sm truncate">Cost Value (LP)</h3>
           </div>
-          <p className="text-2xl font-bold text-blue-600">₹{totalWarehouseValueLP.toLocaleString('en-IN')}</p>
-          <p className="text-xs text-gray-400 mt-1">Total invested capital</p>
+          <p className="text-lg sm:text-2xl font-bold text-blue-600 truncate">₹{totalWarehouseValueLP.toLocaleString('en-IN')}</p>
+          <p className="text-[11px] text-gray-400 mt-0.5 truncate hidden sm:block">Total invested capital</p>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
-          <div className="flex items-center text-gray-500 mb-2">
-            <ArrowUpCircle size={18} className="mr-2 text-green-500" />
-            <h3 className="font-semibold text-sm">Potential Value (TP)</h3>
+        <div className="bg-white rounded-lg shadow-xs border border-gray-200 p-3.5 sm:p-5">
+          <div className="flex items-center text-gray-500 mb-1.5 sm:mb-2">
+            <ArrowUpCircle size={16} className="mr-1 text-green-500" />
+            <h3 className="font-semibold text-xs sm:text-sm truncate">Selling Value (TP)</h3>
           </div>
-          <p className="text-2xl font-bold text-green-600">₹{totalWarehouseValueTP.toLocaleString('en-IN')}</p>
-          <p className="text-xs text-gray-400 mt-1">If all stock sold at TP</p>
+          <p className="text-lg sm:text-2xl font-bold text-green-600 truncate">₹{totalWarehouseValueTP.toLocaleString('en-IN')}</p>
+          <p className="text-[11px] text-gray-400 mt-0.5 truncate hidden sm:block">If all stock sold at TP</p>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
-          <div className="flex items-center text-gray-500 mb-2">
-            <AlertTriangle size={18} className="mr-2 text-orange-500" />
-            <h3 className="font-semibold text-sm">Action Needed</h3>
+        <div className="col-span-2 md:col-span-1 bg-white rounded-lg shadow-xs border border-gray-200 p-3.5 sm:p-5">
+          <div className="flex items-center text-gray-500 mb-1.5 sm:mb-2">
+            <AlertTriangle size={16} className="mr-1.5 text-orange-500" />
+            <h3 className="font-semibold text-xs sm:text-sm truncate">Action Needed</h3>
           </div>
-          <p className="text-lg font-bold text-gray-900">
-            <span className="text-orange-500">{lowStockItems.length}</span> low stock
-          </p>
-          <p className="text-lg font-bold text-gray-900">
-            <span className="text-red-500">{outOfStockItems.length}</span> out of stock
+          <p className="text-sm sm:text-base font-bold text-gray-900">
+            <span className="text-orange-500">{lowStockItems.length}</span> low stock • <span className="text-red-500">{outOfStockItems.length}</span> out
           </p>
         </div>
       </div>
 
       <div className="bg-white shadow rounded-lg border border-gray-200 overflow-hidden flex flex-col">
-        <div className="p-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-          <h2 className="text-lg font-bold text-gray-900">Quick Stock Adjustment</h2>
+        <div className="p-3.5 sm:p-4 border-b border-gray-200 bg-gray-50 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+          <h2 className="text-base sm:text-lg font-bold text-gray-900">Quick Stock Adjustment</h2>
           <input
             type="text"
-            placeholder="Search products to update stock..."
+            placeholder="Search products..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="border border-gray-300 rounded-md px-3 py-1.5 text-sm w-64 focus:outline-none focus:border-blue-500"
+            className="border border-gray-300 rounded-md px-3 py-1.5 text-xs sm:text-sm w-full sm:w-64 focus:outline-none focus:border-blue-500"
           />
         </div>
         
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="min-w-full divide-y divide-gray-200 text-xs sm:text-sm">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product Name & SKU</th>
